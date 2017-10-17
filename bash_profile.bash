@@ -1,6 +1,29 @@
 #@IgnoreInspection BashAddShebang
 
-#set -x
+unset PROMPT_COMMAND
+
+export PS4='+Line ${LINENO}: '
+
+error() {
+    echo "Error:"
+    # get length of an array
+    stackDepth=${#BASH_SOURCE[@]}
+    # use for loop read all nameservers
+    for (( i=0; i<10; i++ ));
+    do
+      echo "$i ----- ${FUNCNAME[$i]} ------ ${BASH_SOURCE[$i]}  ---- ${BASH_LINENO[$i]}"
+    done
+    for (( i=0; i<10; i++ ));
+    do
+      echo "$i ${FUNCNAME[$i]} at ${BASH_SOURCE[$i+1]}:${BASH_LINENO[$i]}"
+    done
+}
+
+# $BASH_LINENO = An array variable whose members are the line numbers in source files where each corresponding member of FUNCNAME was invoked.
+# ${BASH_LINENO[$i]} is the line number in the source file (${BASH_SOURCE[$i+1]}) where ${FUNCNAME[$i]} was called
+# (or ${BASH_LINENO[$i-1]} if referenced within another shell function).
+# Use LINENO to obtain the current line number.
+#trap error ERR
 
 # Add environment variable COCOS_CONSOLE_ROOT for cocos2d-x
 export COCOS_CONSOLE_ROOT=/Applications/Cocos/Cocos2d-x/cocos2d-x-3.10/tools/cocos2d-console/bin
@@ -31,25 +54,34 @@ if [ -f /usr/local/share/bash-completion/bash_completion ]; then
     source /usr/local/share/bash-completion/bash_completion
 fi
 
-export GIT_PROMPT_ONLY_IN_REPO=1
 if [ -f "/usr/local/opt/bash-git-prompt/share/gitprompt.sh" ]; then
+    GIT_PROMPT_ONLY_IN_REPO=1
+    GIT_PROMPT_THEME=Default\ NoExitState
+
     __GIT_PROMPT_DIR="/usr/local/opt/bash-git-prompt/share"
     source "/usr/local/opt/bash-git-prompt/share/gitprompt.sh"
 fi
 
 test -e "${HOME}/.iterm2_shell_integration.bash" && source "${HOME}/.iterm2_shell_integration.bash"
 
+# TODO: PR for this fix
+function we_are_on_repo() {
+  if [[ -e "$(git rev-parse --git-dir 2> /dev/null)" ]]; then
+    echo 1
+  else
+    echo 0
+  fi
+}
+
 function setMyPrompt() {
     # append history lines from this session to the history file
     history -a
-
-    setGitPrompt
 
     local GPWD=$(git rev-parse --show-toplevel 2>/dev/null)
     local DEPOT=${GPWD##*/}
     local _PWD="${PWD/$GPWD/}"
     _PWD="${_PWD/$HOME/\~}"
-    if [ -n "${DEPOT}" ]; then
+    if [[ -n "${DEPOT}" ]]; then
         _PWD="${DEPOT} [${GIT_BRANCH}] ${_PWD}"
     fi
     case $TERM in
@@ -61,10 +93,15 @@ function setMyPrompt() {
         ;;
       esac
 
-  iterm2_set_user_var gitBranch ${GIT_BRANCH}
-
-  history -c
-  history -a
+    if [[ $(we_are_on_repo) = 1 ]]; then
+        iterm2_set_user_var gitBranch ${GIT_BRANCH}
+    else
+        iterm2_set_user_var gitBranch ''
+    fi
+    history -c
+    history -r
 }
 
-export PROMPT_COMMAND="setMyPrompt"
+gp_install_prompt
+export PROMPT_COMMAND="${PROMPT_COMMAND};setMyPrompt"
+
