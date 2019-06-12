@@ -77,6 +77,7 @@ function setMyPrompt() {
     # append history lines from this session to the history file
     history -a
 
+    # GPWD -- root of repo
     local GPWD=$(git rev-parse --show-toplevel 2>/dev/null)
     local DEPOT=${GPWD##*/}
     local _PWD="${PWD/$GPWD/}"
@@ -94,7 +95,8 @@ function setMyPrompt() {
       esac
 
     if [[ $(we_are_on_repo) = 1 ]]; then
-        iterm2_set_user_var gitBranch ${GIT_BRANCH}
+        local REPO_NAME=`basename ${GPWD}`
+        iterm2_set_user_var gitBranch "${REPO_NAME} @ ${GIT_BRANCH}"
     else
         iterm2_set_user_var gitBranch ''
     fi
@@ -103,5 +105,7 @@ function setMyPrompt() {
 }
 
 gp_install_prompt
-export PROMPT_COMMAND="${PROMPT_COMMAND};setMyPrompt"
+export PROMPT_COMMAND="${PROMPT_COMMAND//;/\n};setMyPrompt"
+
+echo "[$PROMPT_COMMAND]"
 
